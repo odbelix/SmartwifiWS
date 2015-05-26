@@ -22,18 +22,28 @@ class SmartwifiRestSummaryController extends Controller
 {
     
    /**
-    * List of all Summaries recorded.
-    * @Get("/summaries/all")
+    * List of all Summaries recorded, default values are Order=DESC and Limit=2016(One week ago)
+    * @Get("/summary/all/{order}/{limit}", defaults={"order" = "DESC","limit" = 2016})
     * @ApiDoc(
     *  resource=true,
-    *  description="List of all summaries recorded, whitout limits"
+    *  description="List of all summaries recorded, whitout limits",
+    *  requirements={
+    *      {"name"="order", "dataType"="string", "requirement"="true", "description"="Order of results (DESC|ASC)"},
+    *      {"name"="limit", "dataType"="string", "requirement"="true", "description"="Limit of results, default 2016"}
+    *  }
     * )
     */
-    public function getSummariesAction()
+    public function getSummariesAction($order,$limit)
     {
+        
+        if ( $order != "DESC" && $order != "ASC" ) {
+            $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
+            return $result;
+        }
          $documents = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
-        ->findAll();
+        ->findBy(array(),
+                 array('summary_number'=>$order),$limit);
         
         if ( !$documents ) {
             $result = ( array("message" => "Summaries not found") );

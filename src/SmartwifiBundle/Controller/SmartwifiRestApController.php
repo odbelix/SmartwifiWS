@@ -238,19 +238,26 @@ class SmartwifiRestApController extends Controller
 
    /**
     * The information of the last record, from the last Summary for one WLC
-    * @Get("/ap/{wlc}/lastrecord/{order}/{limit}")
+    * @Get("/ap/{wlcip}/lastrecord/{order}/{limit}")
     * @ApiDoc(
     *  resource=true,
     *  description="Get Client count information from the last Record",
     *   requirements={
-    *      {"name"="wlc", "dataType"="string", "requirement"="true", "description"="IP of WLC"},
+    *      {"name"="wlcip", "dataType"="string", "requirement"="true", "description"="IP of WLC"},
     *      {"name"="order", "dataType"="string", "requirement"="true", "description"="Order of records (DESC|ASC) by total of Clients for each AP"},
     *      {"name"="limit", "dataType"="string", "requirement"="true", "description"="amount of records, 0 for unlimited"},
     *  }
     * )
     */
-    public function getApLastRecordsByWlcAction($wlc,$order,$limit)
+    public function getApLastRecordsByWlcAction($wlcip,$order,$limit)
     {
+        
+        if ( $order != "DESC" && $order != "ASC" ) {
+            $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
+            return $result;
+        }
+        
+        
         $summaries = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
         ->findBy(array(),
@@ -261,7 +268,7 @@ class SmartwifiRestApController extends Controller
             ->getManager()
             ->createQueryBuilder('SmartwifiBundle:Apsummary')
             ->field('date_of_record')->range($summaries[0]->getSummaryStart(),$summaries[0]->getSummaryStop())
-            ->field('wlc_ip')->equals($wlc)
+            ->field('wlc_ip')->equals($wlcip)
             ->limit($limit)
             ->sort("ap_clientscount", $order)
             ->getQuery()
@@ -289,6 +296,13 @@ class SmartwifiRestApController extends Controller
     */
     public function getApLastRecordsAction($order,$limit)
     {
+        if ( $order != "DESC" && $order != "ASC" ) {
+            $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
+            return $result;
+        }
+        
+        
+        
         $summaries = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
         ->findBy(array(),
@@ -326,6 +340,10 @@ class SmartwifiRestApController extends Controller
     */
     public function getApTodayRecordsByAction($mac,$order)
     {
+        if ( $order != "DESC" && $order != "ASC" ) {
+            $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
+            return $result;
+        }
         
         //Checking MAC format
         if ( !preg_match('/([a-fA-F0-9]{2}[:|\-]?){6}/', $mac) )
