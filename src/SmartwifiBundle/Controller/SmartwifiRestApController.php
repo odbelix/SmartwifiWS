@@ -12,6 +12,7 @@ use Nelmio\ApiDocBundle\Annotation\ApiDoc;
 
 //Entities/Document
 use SmartwifiBundle\Document\Ap;
+use SmartwifiBundle\Document\Clients;
 
 //For date problem*
 date_default_timezone_set('UTC');
@@ -421,6 +422,50 @@ class SmartwifiRestApController extends Controller
             array_push($apsummaries,$aps);
         }
         return $apsummaries;
+    }
+    
+    /**
+     * Information fo AP with Client IP. Only the record of the last AP with relation with client Ip
+     * @Get("/ap/record/by/client/ip/{clientip}")
+     * @ApiDoc(
+     *  resource=true,
+     *  description="Information of AP on the last record with client IP address",
+     *   requirements={
+     *      {"name"="clientip", "dataType"="string", "requirement"="true", "description"="IP of Client"}
+     *  }
+     * )
+     */
+    public function getApWithLastIpClientAction($clientip)
+    {
+        if (!filter_var($clientip, FILTER_VALIDATE_IP))
+        {
+            $result = ( array("message" => "wrong IP format") );
+            return $result;
+        }
+                
+        $clientrecord = $this->get('doctrine_mongodb')
+            ->getRepository('SmartwifiBundle:Clients')
+            ->findOneBy(
+            array('client_ip' => $clientip),array('date_of_record' => 'ASC'),1
+        );
+        
+        
+        //GETTING WLC Clients
+        $documents = $this->get('doctrine_mongodb')
+            ->getManager()
+            ->createQueryBuilder('SmartwifiBundle:Clients')
+            ->field('client_ip')->equals($clientip)
+            ->limit(1)
+            ->sort("date_of_record",'DESC')
+            ->getQuery()
+            ->execute();
+
+        $client = array();
+        foreach($documents as $cli){
+            array_push($client,$cli);
+        }
+        return $client;
+        
     }
     
     

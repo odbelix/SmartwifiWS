@@ -26,10 +26,13 @@ class SmartwifiRestSummaryController extends Controller
     * @Get("/summary/all/{order}/{limit}", defaults={"order" = "DESC","limit" = 2016})
     * @ApiDoc(
     *  resource=true,
+    *  tags={
+    *      "stable" = "#99CC00"
+    *   },
     *  description="List of all summaries recorded, whitout limits",
     *  requirements={
-    *      {"name"="order", "dataType"="string", "requirement"="true", "description"="Order of results (DESC|ASC)"},
-    *      {"name"="limit", "dataType"="string", "requirement"="true", "description"="Limit of results, default 2016"}
+    *      {"name"="order", "dataType"="string", "requirement"="false", "description"="Order of results (DESC|ASC)"},
+    *      {"name"="limit", "dataType"="string", "requirement"="false", "description"="Limit of results, default 2016"}
     *  }
     * )
     */
@@ -40,6 +43,11 @@ class SmartwifiRestSummaryController extends Controller
             $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
             return $result;
         }
+        if(!is_numeric($limit)) {
+            $result = ( array("message" => "wrong LIMIT format (Only number)") );
+            return $result;
+        }
+        
          $documents = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
         ->findBy(array(),
@@ -104,25 +112,47 @@ class SmartwifiRestSummaryController extends Controller
     }
 
    /**
-    * Information of Summaries of today
-    * @Get("/summaries/today")
+    * Information of Summaries of today. The default order is DESC and it has not limit.
+    * @Get("/summary/today/{order}/{limit}",defaults={"order" = "DESC","limit" = 0})
     * @ApiDoc(
     *  resource=true,
     *  description="Information of Summaries of today",
+    *  requirements={
+    *      {"name"="order", "dataType"="string", "requirement"="true", "description"="Order of results (DESC|ASC)","default"="DESC"},
+    *      {
+    *       "name"="limit",
+    *       "dataType"="integer",
+    *       "requirement"="true",
+    *       "description"="how many objects to return"
+    *      }
+    *  }
     * )
     */
-    public function getSummariesOfTodayAction()
+    public function getSummariesOfTodayAction($order,$limit)
     {
-
+        $logger = $this->get('logger');
+        $logger->info($order);
+       
+        if ( $order != "DESC" && $order != "ASC" ) {
+            $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
+            return $result;
+        }
+        if(!is_numeric($limit)) {
+            $result = ( array("message" => "wrong LIMIT format (Only number)") );
+            return $result;
+        }
+        
         //QUERY BUILDER
         $documents = $this->get('doctrine_mongodb')
             ->getManager()
             ->createQueryBuilder('SmartwifiBundle:Summary')
             //->hydrate(false)
             ->field('summary_start')->range(new \DateTime('today'),new \DateTime('tomorrow'))
-            ->sort('summary_number', 'ASC')
+            ->limit($limit)
+            ->sort('summary_number',$order)
             ->getQuery()
             ->execute();
+        
         $summaries = array();
 
         if ( count($documents) == 0)
@@ -146,21 +176,35 @@ class SmartwifiRestSummaryController extends Controller
 
    /**
     * Information of Summaries of yesterday
-    * @Get("/summaries/yesterday")
+    * @Get("/summary/yesterday/{order}/{limit}",defaults={"order" = "DESC","limit" = 0})
     * @ApiDoc(
     *  resource=true,
-    *  description="Information of Summaries of yesterday"
+    *  description="Information of Summaries of yesterday",
+    *  requirements={
+    *      {"name"="order", "dataType"="string", "requirement"="true", "description"="Order of results (DESC|ASC)"},
+    *      {"name"="limit", "dataType"="string", "requirement"="true", "description"="Limit of results, default 0, means unlimited"}
+    *  }
     * )
     */
-    public function getSummariesOfYesterdayAction()
+    public function getSummariesOfYesterdayAction($order,$limit)
     {
+        if ( $order != "DESC" && $order != "ASC" ) {
+            $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
+            return $result;
+        }
+        if(!is_numeric($limit)) {
+            $result = ( array("message" => "wrong LIMIT format (Only number)") );
+            return $result;
+        }
+        
         //QUERY BUILDER
         $documents = $this->get('doctrine_mongodb')
             ->getManager()
             ->createQueryBuilder('SmartwifiBundle:Summary')
             //->hydrate(false)
             ->field('summary_start')->range(new \DateTime('yesterday'),new \DateTime('today'))
-            ->sort('summary_number', 'ASC')
+            ->limit($limit)
+            ->sort('summary_number', $order)
             ->getQuery()
             ->execute();
         $summaries = array();
@@ -185,18 +229,25 @@ class SmartwifiRestSummaryController extends Controller
 
    /**
     * Information of summaries between to summaries ID
-    * @Get("/summaries/range/{idfrom}/to/{idto}")
+    * @Get("/summary/range/{idfrom}/to/{idto}/{order}",defaults={"order" = "DESC"})
     * @ApiDoc(
     *  resource=true,
     *  description="Information of Summaries between two summaries id",
     *  requirements={
     *      {"name"="idfrom", "dataType"="string", "requirement"="true", "description"="Id of Summary(FROM)"},
-    *      {"name"="idto", "dataType"="string", "requirement"="true", "description"="Id of Summary(TO)"}
+    *      {"name"="idto", "dataType"="string", "requirement"="true", "description"="Id of Summary(TO)"},
+    *      {"name"="order", "dataType"="string", "requirement"="true", "description"="Order of results, default DESC"}
     *  }
     * )
     */
-    public function getSummariesInRangeAction($idfrom,$idto)
+    public function getSummariesInRangeAction($idfrom,$idto,$order)
     {
+        if ( $order != "DESC" && $order != "ASC" ) {
+            $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
+            return $result;
+        }
+        
+        
         //VALIDATE ID
         $documents = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
@@ -221,7 +272,7 @@ class SmartwifiRestSummaryController extends Controller
             ->getManager()
             ->createQueryBuilder('SmartwifiBundle:Summary')
             ->field('id')->range($idfrom,$idto)
-            ->sort('summary_number', 'ASC')
+            ->sort('summary_number', $order)
             ->getQuery()
             ->execute();
 
