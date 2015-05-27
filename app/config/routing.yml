@@ -1,0 +1,11 @@
+smartwifi:
+    resource: "@SmartwifiBundle/Resources/config/routing.yml"
+    prefix:   /
+app:
+    resource: "@AppBundle/Controller/"
+    type:     annotation
+
+##DOC
+NelmioApiDocBundle:
+    resource: "@NelmioApiDocBundle/Resources/config/routing.yml"
+    prefix:   /api/doc
