@@ -13,12 +13,96 @@ use Nelmio\ApiDocBundle\Annotation\ApiDoc;
 //Entities/Document
 use SmartwifiBundle\Document\Ap;
 use SmartwifiBundle\Document\Clients;
+use SmartwifiBundle\Document\Clientslast;
+use SmartwifiBundle\Document\Summary;
 
 //For date problem*
 date_default_timezone_set('UTC');
 
 class SmartwifiRestApController extends Controller
-{    
+{
+
+  /**
+  * The information about amount of clientes between two Summaries for specific AP
+  * @Get("/ap/history/number/{numbersummaryfrom}/to/{numbersummaryto}/macradio/{mac}")
+  * @ApiDoc(
+  *  resource=true,
+  *  description="The information about amount of clientes between two Summaries for specific AP",
+  *   requirements={
+  *      {"name"="numbersummaryfrom", "dataType"="string", "requirement"="true", "description"="Number of Summary"},
+  *      {"name"="numbersummaryto", "dataType"="string", "requirement"="true", "description"="Number of Summary"},
+  *      {"name"="mac", "dataType"="string", "requirement"="true", "description"="MAC of Radio"}
+  *  }
+  * )
+  */
+  public function getApHistoryByIdAction($numbersummaryfrom,$numbersummaryto,$mac)
+  {
+    $summaryfrom = $this->get('doctrine_mongodb')
+    ->getRepository('SmartwifiBundle:Summary')
+    ->findOneBy(
+    array('summary_number' => (int)$numbersummaryfrom)
+    );
+
+
+    $summaryto = $this->get('doctrine_mongodb')
+    ->getRepository('SmartwifiBundle:Summary')
+    ->findOneBy(
+    array('summary_number' => (int)$numbersummaryto)
+    );
+
+    $documents = $this->get('doctrine_mongodb')
+        ->getManager()
+        ->createQueryBuilder('SmartwifiBundle:Apsummary')
+        ->field('date_of_record')->range($summaryfrom->getSummaryStart(),$summaryto->getSummaryStop())
+        ->field('ap_macradio')->equals($mac)
+        ->sort("date_of_record","ASC")
+        ->getQuery()
+        ->execute();
+
+    $apsummaries = array();
+    foreach($documents as $aps){
+        array_push($apsummaries,$aps);
+    }
+
+    $em = $this->get('doctrine_mongodb')->getManager();
+    $em->getConnection()->close();
+    return $apsummaries;
+  }
+
+
+  /**
+  * The information about clients of today for specific AP
+  * @Get("/ap/history/today/macradio/{mac}")
+  * @ApiDoc(
+  *  resource=true,
+  *  description="The information about clients of today for specific AP",
+  *   requirements={
+  *      {"name"="mac", "dataType"="string", "requirement"="true", "description"="MAC of Radio"}
+  *  }
+  * )
+  */
+  public function getApHistoryTodayByMacAction($mac)
+  {
+    //    
+     $documents = $this->get('doctrine_mongodb')
+        ->getManager()
+        ->createQueryBuilder('SmartwifiBundle:Apsummary')
+        ->field('date_of_record')->range(new \DateTime('today'),new \DateTime('tomorrow'))
+        ->field('ap_macradio')->equals($mac)
+        ->sort("date_of_record","ASC")
+        ->getQuery()
+        ->execute();
+        
+    $apsummaries = array();
+    foreach($documents as $aps){
+        array_push($apsummaries,$aps);
+    }       
+    $em = $this->get('doctrine_mongodb')->getManager();
+    $em->getConnection()->close();
+    return $apsummaries;
+  }
+
+
     /**
     * The list of AP registered on all WLCs.
     * @Get("/ap/list")
@@ -36,9 +120,9 @@ class SmartwifiRestApController extends Controller
             ->distinct('ap_ip')
             ->getQuery()
             ->execute();
-        
+
         $aps = array();
-        
+
         foreach($iplist as $ip){
             //array_push($aps,$ap);/
             //GETTING AP
@@ -49,6 +133,9 @@ class SmartwifiRestApController extends Controller
             );
             array_push($aps,$ap);
         }
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $aps;
     }
 
@@ -86,6 +173,9 @@ class SmartwifiRestApController extends Controller
             );
             array_push($aps,$ap);
         }
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $aps;
     }
 
@@ -105,7 +195,7 @@ class SmartwifiRestApController extends Controller
     {
         //Validate MAC
         if ( !preg_match('/([a-fA-F0-9]{2}[:|\-]?){6}/', $mac) )
-        {   
+        {
             $result = ( array("message" => "wrong MAC format") );
             return $result;
         }
@@ -119,6 +209,9 @@ class SmartwifiRestApController extends Controller
             $result = ( array("message" => "AP not found with Radio MAC:".$mac) );
             return $result;
         }
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $ap;
     }
 
@@ -137,7 +230,7 @@ class SmartwifiRestApController extends Controller
     {
         //Validate MAC
         if ( !preg_match('/([a-fA-F0-9]{2}[:|\-]?){6}/', $mac) )
-        {   
+        {
             $result = ( array("message" => "wrong MAC format") );
             return $result;
         }
@@ -151,8 +244,10 @@ class SmartwifiRestApController extends Controller
             $result = ( array("message" => "AP not found with Ethernet MAC:".$mac) );
             return $result;
         }
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $ap;
-    }    
+    }
 
   /**
     * Information of AP for each time that it is available
@@ -172,12 +267,12 @@ class SmartwifiRestApController extends Controller
         $logger = $this->get('logger');
         $logger->info(strlen($value));
         $logger->info(substr_count($value,"."));
- 
+
         if ( strlen($value) > 15 || substr_count($value,".") != 3 )
         {
             $result = ( array("message" => "wrong IP format") );
             return $result;
-        }       
+        }
 
         $aprecords = $this->get('doctrine_mongodb')
                 ->getRepository('SmartwifiBundle:Ap')
@@ -188,6 +283,8 @@ class SmartwifiRestApController extends Controller
             $result = ( array("message" => "AP Records not found with IP:".$ip) );
             return $result;
         }
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $aprecords;
     }
 
@@ -220,20 +317,23 @@ class SmartwifiRestApController extends Controller
             ->createQueryBuilder('SmartwifiBundle:Apsummary')
             ->field('ap_macradio')->equals($mac)
             ->limit($limit)
+            ->sort("date_of_record", "DESC")
             ->getQuery()
             ->execute();
-        
+
         $apsummaries = array();
         foreach($apsummarydata  as $data)
         {
             array_push($apsummaries,$data);
         }
-        
+
         if ( !$apsummaries ) {
             $result = ( array("message" => "AP Summaries not found with MAC:".$mac) );
             return $result;
         }
 
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $apsummaries;
     }
 
@@ -252,13 +352,13 @@ class SmartwifiRestApController extends Controller
     */
     public function getApLastRecordsByWlcAction($wlcip,$order,$limit)
     {
-        
+
         if ( $order != "DESC" && $order != "ASC" ) {
             $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
             return $result;
         }
-        
-        
+
+
         $summaries = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
         ->findBy(array(),
@@ -280,6 +380,8 @@ class SmartwifiRestApController extends Controller
             array_push($apsummaries,$aps);
         }
 
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $apsummaries;
     }
 
@@ -301,9 +403,9 @@ class SmartwifiRestApController extends Controller
             $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
             return $result;
         }
-        
-        
-        
+
+
+
         $summaries = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
         ->findBy(array(),
@@ -323,10 +425,13 @@ class SmartwifiRestApController extends Controller
         foreach($documents as $aps){
             array_push($apsummaries,$aps);
         }
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $apsummaries;
-        
+
     }
-    
+
     /**
     * The information of amount of client for one AP
     * @Get("/ap/record/today/by/radio/{mac}/{order}")
@@ -345,14 +450,14 @@ class SmartwifiRestApController extends Controller
             $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
             return $result;
         }
-        
+
         //Checking MAC format
         if ( !preg_match('/([a-fA-F0-9]{2}[:|\-]?){6}/', $mac) )
-        {   
+        {
             $result = ( array("message" => "wrong MAC format") );
             return $result;
         }
-        
+
         //GETTING WLC Clients
         $documents = $this->get('doctrine_mongodb')
             ->getManager()
@@ -367,11 +472,14 @@ class SmartwifiRestApController extends Controller
         foreach($documents as $aps){
             array_push($apsummaries,$aps);
         }
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $apsummaries;
-        
+
     }
-    
-    
+
+
     /**
      * Information fo AP for specific date and wlc
      * @Get("/ap/record/{wlcip}/{recordid}/{order}")
@@ -396,17 +504,23 @@ class SmartwifiRestApController extends Controller
             $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
             return $result;
         }
-        
+
         $wlcclients = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Wlcclients')
         ->findOneById($recordid);
-        
+
+        if ( !$wlcclients ) {
+            $result = ( array("message" => "RecordID is not valid or does not exists".$recordid) );
+            return $result;
+        }
+
+
         $logger = $this->get('logger');
         $logger->info($wlcclients->getDateOfRecord()->format('Y-m-d H:i:s'));
         $logger->info($wlcclients->getDateOfRecord()->getTimestamp());
-        
+
         //$datetime = new \DateTime($daterecord,$UTC);
-        
+
         //GETTING WLC Clients
         $documents = $this->get('doctrine_mongodb')
             ->getManager()
@@ -421,9 +535,12 @@ class SmartwifiRestApController extends Controller
         foreach($documents as $aps){
             array_push($apsummaries,$aps);
         }
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $apsummaries;
     }
-    
+
     /**
      * Information fo AP with Client IP. Only the record of the last AP with relation with client Ip
      * @Get("/ap/record/by/client/ip/{clientip}")
@@ -439,41 +556,26 @@ class SmartwifiRestApController extends Controller
     {
         if (!filter_var($clientip, FILTER_VALIDATE_IP))
         {
-            $result = ( array("message" => "wrong IP format") );
+            $result = ( array("message" => "wrong IP format" ,"errorcode" => "01") );
             return $result;
         }
-                
+
         $clientrecord = $this->get('doctrine_mongodb')
-            ->getRepository('SmartwifiBundle:Clients')
+            ->getRepository('SmartwifiBundle:Clientslast')
             ->findOneBy(
             array('client_ip' => $clientip),array('date_of_record' => 'ASC'),1
         );
-        
-        
-        //GETTING WLC Clients
-        $documents = $this->get('doctrine_mongodb')
-            ->getManager()
-            ->createQueryBuilder('SmartwifiBundle:Clients')
-            ->field('client_ip')->equals($clientip)
-            ->limit(1)
-            ->sort("date_of_record",'DESC')
-            ->getQuery()
-            ->execute();
 
-        $client = array();
-        foreach($documents as $cli){
-            array_push($client,$cli);
+        if ( !$clientrecord ) {
+            $result = ( array("message" => "Not exists record for this IP (".$clientip.")","errorcode" => "02"));
+            return $result;
         }
-        return $client;
-        
-    }
-    
-    
-}
-            
-            
-            
-            
-            
-            
 
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
+        return $clientrecord;
+
+    }
+
+
+}

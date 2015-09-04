@@ -48,18 +48,20 @@ class SmartwifiRestOneWlcController extends Controller
         ->getRepository('SmartwifiBundle:Wlcclients')
         ->findBy(
             array('wlc_ip' => $value ),array('date_of_record' => $order)
-        ); 
+        );
 
         if (!$documents) {
             $result = ( array("message" => "Result not FOUND for WLC(".$value.")") );
             return $result;
         }
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $documents;
     }
 
 
    /**
-    * Information of the last client measure for one WLC. 
+    * Information of the last client measure for one WLC.
     * @Get("/wlc/{wlcip}/clients/last")
     * @ApiDoc(
     *  resource=true,
@@ -76,15 +78,15 @@ class SmartwifiRestOneWlcController extends Controller
             $result = ( array("message" => "wrong IP format") );
             return $result;
         }
-        
+
 
         $summaries = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
         ->findBy(
             array(),
-            array('summary_number'=>'DESC')    
+            array('summary_number'=>'DESC')
         );
-        
+
         //GETTING WLC Clients
         $documents = $this->get('doctrine_mongodb')
             ->getManager()
@@ -93,14 +95,16 @@ class SmartwifiRestOneWlcController extends Controller
             ->field('wlc_ip')->equals($wlcip)
             ->getQuery()
             ->execute();
-  
+
         $wlcipclients = array();
         foreach($documents as $clients){
             array_push($wlcipclients,$clients);
         }
-        
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $wlcipclients;
-        
+
     }
 
    /**
@@ -121,7 +125,7 @@ class SmartwifiRestOneWlcController extends Controller
         {
             $result = ( array("message" => "wrong IP format") );
             return $result;
-        }        
+        }
 
 
         //QUERY BUILDER
@@ -133,10 +137,10 @@ class SmartwifiRestOneWlcController extends Controller
             ->sort('summary_number', 'ASC')
             ->getQuery()
             ->execute();
-        
+
         $wlcipclients = array();
-        
-        foreach($summaries as $summary){ 
+
+        foreach($summaries as $summary){
             //array_push($summaries,$summary);
             //GETTING CLIENTS
 
@@ -147,11 +151,13 @@ class SmartwifiRestOneWlcController extends Controller
             ->field('wlc_ip')->equals($wlcip)
             ->getQuery()
             ->execute();
-        
+
             foreach($documents as $clients){
                 array_push($wlcipclients,$clients);
-            }    
-        } 
+            }
+        }
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $wlcipclients;
     }
 
@@ -204,6 +210,8 @@ class SmartwifiRestOneWlcController extends Controller
                 array_push($wlcipclients,$clients);
             }
         }
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $wlcipclients;
     }
 
@@ -223,7 +231,7 @@ class SmartwifiRestOneWlcController extends Controller
     */
     public function getByWlcClientsFromToByIdAction($wlcip,$idsummaryfrom,$idsummaryto)
     {
-    
+
         if (!filter_var($wlcip, FILTER_VALIDATE_IP))
         {
             $result = ( array("message" => "wrong IP format") );
@@ -232,8 +240,8 @@ class SmartwifiRestOneWlcController extends Controller
 
 
         //QUERY BUILDER
-        $summaryfrom = 0; 
-        $summaryto = 0; 
+        $summaryfrom = 0;
+        $summaryto = 0;
 
         $summaryfrom = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
@@ -270,6 +278,9 @@ class SmartwifiRestOneWlcController extends Controller
         foreach($documents as $clients){
             array_push($wlcipclients,$clients);
         }
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $wlcipclients;
     }
 
@@ -329,10 +340,11 @@ class SmartwifiRestOneWlcController extends Controller
         foreach($documents as $clients){
             array_push($wlcipclients,$clients);
         }
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $wlcipclients;
     }
 
 
 }
-
-

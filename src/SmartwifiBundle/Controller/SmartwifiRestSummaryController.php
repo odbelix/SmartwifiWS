@@ -20,7 +20,47 @@ date_default_timezone_set('UTC');
 
 class SmartwifiRestSummaryController extends Controller
 {
-    
+    /**
+    * List of all dates of Summaries recorded
+    * @Get("/summary/all/dates")
+    * @ApiDoc(
+    *  resource=true,
+    *  tags={
+    *      "stable" = "#99CC00"
+    *   },
+    *  description="List of all dates of Summaries recorded",
+    * )
+    */
+    public function getDatesOfSummaryAction()
+    {
+        //QUERY BUILDER - UNIC IP on AP List
+        $datelist = $this->get('doctrine_mongodb')
+            ->getManager()
+            ->createQueryBuilder('SmartwifiBundle:Summary')
+            ->select('summary_start','summary_number')
+            ->getQuery()
+            ->execute();
+
+        $dates = array();
+        $temp = new \DateTime();
+        foreach($datelist as $date){
+
+            if ($temp->format('d-m-Y') != $date->getSummaryStart()->format('d-m-Y') ) {
+                array_push($dates,$date);
+
+            }
+            $temp = $date->getSummaryStart();
+        }
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
+        return $dates;
+    }
+
+
+
+
+
+
    /**
     * List of all Summaries recorded, default values are Order=DESC and Limit=2016(One week ago)
     * @Get("/summary/all/{order}/{limit}", defaults={"order" = "DESC","limit" = 2016})
@@ -38,7 +78,7 @@ class SmartwifiRestSummaryController extends Controller
     */
     public function getSummariesAction($order,$limit)
     {
-        
+
         if ( $order != "DESC" && $order != "ASC" ) {
             $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
             return $result;
@@ -47,16 +87,18 @@ class SmartwifiRestSummaryController extends Controller
             $result = ( array("message" => "wrong LIMIT format (Only number)") );
             return $result;
         }
-        
+
          $documents = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
         ->findBy(array(),
                  array('summary_number'=>$order),$limit);
-        
+
         if ( !$documents ) {
             $result = ( array("message" => "Summaries not found") );
             return $result;
         }
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $documents;
     }
    /**
@@ -69,7 +111,7 @@ class SmartwifiRestSummaryController extends Controller
     *      {"name"="id", "dataType"="string", "requirement"="true", "description"="Id of Summary"}
     *  }
     * )
-    */    
+    */
     public function getSummaryByIdAction($id)
     {
         $documents = $this->get('doctrine_mongodb')
@@ -78,10 +120,12 @@ class SmartwifiRestSummaryController extends Controller
 
         if (!$documents) {
             $result = ( array("message" => "Summary not found for ID:".$id) );
-            return $result;        
+            return $result;
         }
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $documents;
-    
+
     }
 
    /**
@@ -94,7 +138,7 @@ class SmartwifiRestSummaryController extends Controller
     *      {"name"="number", "dataType"="integer", "requirement"="true", "description"="Number of Summary"}
     *  }
     * )
-    */   
+    */
     public function getSummaryByNumberAction($number)
     {
         $documents = $this->get('doctrine_mongodb')
@@ -108,6 +152,8 @@ class SmartwifiRestSummaryController extends Controller
             return $result;
 
         }
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $documents;
     }
 
@@ -132,7 +178,7 @@ class SmartwifiRestSummaryController extends Controller
     {
         $logger = $this->get('logger');
         $logger->info($order);
-       
+
         if ( $order != "DESC" && $order != "ASC" ) {
             $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
             return $result;
@@ -141,7 +187,7 @@ class SmartwifiRestSummaryController extends Controller
             $result = ( array("message" => "wrong LIMIT format (Only number)") );
             return $result;
         }
-        
+
         //QUERY BUILDER
         $documents = $this->get('doctrine_mongodb')
             ->getManager()
@@ -152,7 +198,7 @@ class SmartwifiRestSummaryController extends Controller
             ->sort('summary_number',$order)
             ->getQuery()
             ->execute();
-        
+
         $summaries = array();
 
         if ( count($documents) == 0)
@@ -167,12 +213,15 @@ class SmartwifiRestSummaryController extends Controller
         $logger->info(date_default_timezone_get());
 //       $logger->info(var_dump($summary));
 
-        foreach($documents as $summary){ 
+        foreach($documents as $summary){
             array_push($summaries,$summary);
-        }       
-        return $summaries; 
+        }
 
-    } 
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
+        return $summaries;
+
+    }
 
    /**
     * Information of Summaries of yesterday
@@ -196,7 +245,7 @@ class SmartwifiRestSummaryController extends Controller
             $result = ( array("message" => "wrong LIMIT format (Only number)") );
             return $result;
         }
-        
+
         //QUERY BUILDER
         $documents = $this->get('doctrine_mongodb')
             ->getManager()
@@ -208,22 +257,24 @@ class SmartwifiRestSummaryController extends Controller
             ->getQuery()
             ->execute();
         $summaries = array();
-       
+
         if ( count($documents) == 0)
         {
             $result = ( array("message" => "Summaries of yesterday not found") );
             return $result;
         }
- 
-        
+
+
         $logger = $this->get('logger');
         $today = new \DateTime('now');
         $logger->info(date_default_timezone_get());
 //       $logger->info(var_dump($summary));
-        
+
         foreach($documents as $summary){
             array_push($summaries,$summary);
-        }       
+        }
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $summaries;
     }
 
@@ -246,8 +297,8 @@ class SmartwifiRestSummaryController extends Controller
             $result = ( array("message" => "wrong ORDER format (DESC or ASC)") );
             return $result;
         }
-        
-        
+
+
         //VALIDATE ID
         $documents = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
@@ -261,7 +312,7 @@ class SmartwifiRestSummaryController extends Controller
         $documents = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
         ->findOneById($idto);
-        
+
         if (!$documents) {
             $result = ( array("message" => "ID(".$idto.") not found") );
             return $result;
@@ -289,10 +340,10 @@ class SmartwifiRestSummaryController extends Controller
         foreach($documents as $summary){
             array_push($summaries,$summary);
         }
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $summaries;
     }
 
 //end Controller
 }
-
-

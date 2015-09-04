@@ -34,10 +34,12 @@ class SmartwifiRestWlcController extends Controller
          $documents = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Wlc')
         ->findAll();
-        
+
         if (!$documents) {
             throw $this->createNotFoundException('Unable to find document');
-        } 
+        }
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $documents;
     }
    /**
@@ -57,6 +59,10 @@ class SmartwifiRestWlcController extends Controller
         if (!$documents) {
             throw $this->createNotFoundException('Unable to find document');
         }
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
+
         return $documents;
     }
 
@@ -74,9 +80,12 @@ class SmartwifiRestWlcController extends Controller
         $summaries = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
         ->findBy(array(),
-            array('summary_number'=>'DESC')    
+            array('summary_number'=>'DESC')
         );
-        
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
+
         //GETTING WLC Clients
         $documents = $this->get('doctrine_mongodb')
             ->getManager()
@@ -84,14 +93,16 @@ class SmartwifiRestWlcController extends Controller
             ->field('date_of_record')->range($summaries[0]->getSummaryStart(),$summaries[0]->getSummaryStop())
             ->getQuery()
             ->execute();
-  
+
         $wlcclients = array();
         foreach($documents as $clients){
             array_push($wlcclients,$clients);
         }
-        
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
+
         return $wlcclients;
-        
+
     }
 
    /**
@@ -112,10 +123,10 @@ class SmartwifiRestWlcController extends Controller
             ->sort('summary_number', 'ASC')
             ->getQuery()
             ->execute();
-        
+
         $wlcclients = array();
-        
-        foreach($summaries as $summary){ 
+
+        foreach($summaries as $summary){
             //array_push($summaries,$summary);
             //GETTING CLIENTS
 
@@ -125,11 +136,14 @@ class SmartwifiRestWlcController extends Controller
             ->field('date_of_record')->range($summary->getSummaryStart(),$summary->getSummaryStop())
             ->getQuery()
             ->execute();
-        
+
             foreach($documents as $clients){
                 array_push($wlcclients,$clients);
-            }    
-        } 
+            }
+        }
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
+
         return $wlcclients;
     }
 
@@ -170,6 +184,10 @@ class SmartwifiRestWlcController extends Controller
                 array_push($wlcclients,$clients);
             }
         }
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
+
         return $wlcclients;
     }
 
@@ -188,8 +206,8 @@ class SmartwifiRestWlcController extends Controller
     */
     public function getWlcClientsFromToByIdAction($idsummaryfrom,$idsummaryto){
         //QUERY BUILDER
-        $summaryfrom = 0; 
-        $summaryto = 0; 
+        $summaryfrom = 0;
+        $summaryto = 0;
 
         $summaryfrom = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
@@ -213,6 +231,10 @@ class SmartwifiRestWlcController extends Controller
         foreach($documents as $clients){
             array_push($wlcclients,$clients);
         }
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
+
         return $wlcclients;
     }
 
@@ -223,8 +245,8 @@ class SmartwifiRestWlcController extends Controller
     *  resource=true,
     *  description="Information of client between to Summaries, by Summary's number.",
     *  requirements={
-    *      {"name"="numberfrom", "dataType"="integer", "requirement"="true", "description"="Number of Summary(FROM)"},
-    *      {"name"="numberto", "dataType"="integer", "requirement"="true", "description"="Number of Summary(TO)"}
+    *      {"name"="numbersummaryfrom", "dataType"="integer", "requirement"="true", "description"="Number of Summary(FROM)"},
+    *      {"name"="numbersummaryto", "dataType"="integer", "requirement"="true", "description"="Number of Summary(TO)"}
     *  }
     * )
     */
@@ -240,12 +262,23 @@ class SmartwifiRestWlcController extends Controller
         );
 
 
+        if ( !$summaryfrom ) {
+            $result = ( array("message" => "Summary does not exists for number".$numbersummaryfrom) );
+            return $result;
+        }
+
 
         $summaryto = $this->get('doctrine_mongodb')
         ->getRepository('SmartwifiBundle:Summary')
         ->findOneBy(
             array('summary_number' => (int)$numbersummaryto)
         );
+
+        if ( !$summaryto ) {
+            $result = ( array("message" => "Summary does not exists for number".$numbersummaryto) );
+            return $result;
+        }
+
 
         $wlcclients = array();
         //GETTING CLIENTS
@@ -260,10 +293,11 @@ class SmartwifiRestWlcController extends Controller
         foreach($documents as $clients){
             array_push($wlcclients,$clients);
         }
+
+        $em = $this->get('doctrine_mongodb')->getManager();
+        $em->getConnection()->close();
         return $wlcclients;
     }
 
 
 }
-
-
